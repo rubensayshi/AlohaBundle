@@ -1,0 +1,271 @@
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/aloha.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.Format/plugin.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.Table/plugin.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.List/plugin.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.Link/plugin.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.HighlightEditables/plugin.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.TOC/plugin.js') }}"></script>
+<script type="text/javascript" src="{{ asset('bundles/aloha/js/vendor/aloha/plugins/com.gentics.aloha.plugins.Paste/plugin.js') }}"></script>
+
+<script type="text/javascript"> 
+GENTICS.Aloha.settings = {
+		logLevels: {'error': true, 'warn': true, 'info': true, 'debug': false},
+		errorhandling : false,
+		ribbon: false,	
+		"i18n": {
+			// you can either let the system detect the users language (set acceptLanguage on server)
+			// In PHP this would would be '<?=$_SERVER['HTTP_ACCEPT_LANGUAGE']?>' resulting in 
+			// "acceptLanguage": 'de-de,de;q=0.8,it;q=0.6,en-us;q=0.7,en;q=0.2'
+			// or set current on server side to be in sync with your backend system 
+			"current": "en" 
+		},
+		"repositories": {
+		 	"com.gentics.aloha.repositories.LinkList": {
+		 		data: [
+	 		        { name: 'Aloha Developers Wiki', url:'http://www.aloha-editor.com/wiki', type:'website', weight: 0.50 },
+	 		        { name: 'Aloha Editor - The HTML5 Editor', url:'http://aloha-editor.com', type:'website', weight: 0.90  },
+	 		        { name: 'Aloha Demo', url:'http://www.aloha-editor.com/demos.html', type:'website', weight: 0.75  },
+	 		        { name: 'Aloha Wordpress Demo', url:'http://www.aloha-editor.com/demos/wordpress-demo/index.html', type:'website', weight: 0.75  },
+	 		        { name: 'Aloha Logo', url:'http://www.aloha-editor.com/images/aloha-editor-logo.png', type:'image', weight: 0.10  }
+		 		]
+			}
+		},
+		"plugins": {
+		 	"com.gentics.aloha.plugins.Format": {
+			 	// all elements with no specific configuration get this configuration
+				config : [ 'b', 'i','sub','sup', 'p', 'title', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'removeFormat'],
+			  	editables : {
+					// no formatting allowed for title
+					'#title'	: [ ]
+			  	}
+			},
+		 	"com.gentics.aloha.plugins.List": { 
+			 	// all elements with no specific configuration get an UL, just for fun :)
+				config : [ 'ul' , 'ol'],
+			  	editables : {
+					// Even if this is configured it is not set because OL and UL are not allowed in H1.
+					'#title'	: [  ]
+			  	}
+			},
+		 	"com.gentics.aloha.plugins.Link": {
+			 	// all elements with no specific configuration may insert links
+				config : [ 'a' ],
+			  	editables : {
+					// No links in the title.
+					'#title'	: [  ]
+			  	},
+			  	// all links that match the targetregex will get set the target
+	 			// e.g. ^(?!.*aloha-editor.com).* matches all href except aloha-editor.com
+			  	targetregex : '^(?!.*aloha-editor.com).*',
+			  	// this target is set when either targetregex matches or not set
+			    // e.g. _blank opens all links in new window
+			  	target : '_blank',
+			  	// the same for css class as for target
+			  	cssclassregex : '^(?!.*aloha-editor.com).*',
+			  	cssclass : 'aloha',
+			  	// use all resources of type website for autosuggest
+			  	objectTypeFilter: ['website'],
+			  	// handle change of href
+			  	onHrefChange: function( obj, href, item ) {
+				  	if ( item ) {
+						jQuery(obj).attr('data-name', item.name);
+				  	} else {
+						jQuery(obj).removeAttr('data-name');
+				  	}
+			  	}
+			},
+		 	"com.gentics.aloha.plugins.Table": { 
+			 	// all elements with no specific configuration are not allowed to insert tables
+				config : [ 'table' ]
+			}
+	  	}
+	};
+
+
+	var editables_container = function (_container) 
+	{
+		var EDITABLE_INACTIVE 	= 0;
+		var EDITABLE_ACTIVE 	= 1;
+		
+		var container 			= null;
+		var buttons 			= [];
+		var editables			= [];
+		var mode				= EDITABLE_INACTIVE;
+		
+		var init = function (_container) 
+		{
+			container = _container;
+			
+			scan_container();
+			set_container_mode();
+
+			return {};
+		};
+		
+		var new_button = function (button)
+		{			
+			if ($(button).hasClass('editables_edit'))
+				$(button).bind('click', edit_container);
+
+			if ($(button).hasClass('editables_save'))
+				$(button).bind('click', save_container);
+			
+			if ($(button).hasClass('editables_delete'))
+				$(button).bind('click', delete_container);
+			
+			buttons.push( button );
+		};
+
+		var new_editable = function (editable)
+		{
+			editables.push( editable );
+		};
+
+		var edit_container = function ()
+		{
+			$(editables).each(function(i, editable) 
+			{
+				$(editable).aloha(); 
+			});
+
+			set_container_mode(EDITABLE_ACTIVE);
+
+			return false;
+		};
+
+		var save_container = function () 
+		{							
+			data = {};
+			$(editables).each(function(i, editable) 
+			{
+				field = $(editable).attr('data-field');
+				if(AlohaEditable = GENTICS.Aloha.getEditableById( editable.id ))
+					data[field] = AlohaEditable.getContents(); 
+			});
+			
+			
+			$.post(find_button('editables_save').href, data, function(data) 
+			{
+				if(data) 
+					handle_json_return(data);
+			});
+			
+			reset_container();
+			return false;
+		};
+		
+		var delete_container = function () 
+		{			
+			$.post(find_button('editables_delete').href, {}, function(data) 
+			{
+				if(data) 
+					handle_json_return(data);
+			});
+			
+			reset_container();
+			$(container).remove();	
+			return false;
+		};
+
+		var reset_container = function () 
+		{
+			$(editables).each(function(i, editable) 
+			{
+				if(AlohaEditable = GENTICS.Aloha.getEditableById( editable.id ))
+					AlohaEditable.disable(); 
+			});
+			
+			set_container_mode(EDITABLE_INACTIVE);
+
+			return false;
+		};
+
+		var handle_json_return = function (data)
+		{
+			if(data.errors && data.errors.length)
+				alert(data.errors);
+			if(data.redirect)
+				window.location.href = data.redirect;
+		};
+
+		var set_container_mode = function (_mode)
+		{
+			if(_mode != undefined)
+				mode = _mode;
+			
+			if(mode == EDITABLE_INACTIVE)
+			{
+				$(find_button('editables_edit')).css('display', 'inline');
+				$(find_button('editables_save')).css('display', 'none');
+			}
+			else
+			{
+				$(find_button('editables_edit')).css('display', 'none');
+				$(find_button('editables_save')).css('display', 'inline');
+			}
+		};
+
+		var scan_container = function ()
+		{
+			$(container).find('.editables_button').each(function(i, button) 
+			{				
+				new_button(button);
+			});
+			
+			$(container).find('.editables').each(function(i, editable) 
+			{				
+				new_editable(editable);
+			});
+		};
+
+		var find_button = function(search, by) 
+		{
+			by_options	= ['class'];
+			by 			= by || 'class';
+			found 		= false;
+
+			if($.inArray(by, by_options) == -1)
+				return false;
+
+			$(buttons).each(function(i, button)
+			{
+				if(by == 'class' && $(button).hasClass(search))
+					found = button;
+
+				if(found)
+					return false;
+			});
+
+			return found;
+		};		
+
+		/*
+		 * initialize the `constructor` with the params given
+		 * and return it so the `constructor` can return posible externally callable functions
+		 */
+		return init(_container);	
+	};
+
+	var editables = function () {
+		var containers = [];
+		var init = function () 
+		{
+			$('.editables_container').each(function(i, container) 
+			{ 
+				new_container(container);
+			});
+		};
+
+		var new_container = function(container)
+		{
+			containers.push( new editables_container(container) );
+		};
+
+		return {
+			init 	: init,
+			'new'	: new_container
+		};
+	}();
+
+	$(window).load(editables.init);
+</script>	
